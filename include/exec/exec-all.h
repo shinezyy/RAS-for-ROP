@@ -211,6 +211,24 @@ static inline void tlb_flush_by_mmuidx(CPUState *cpu, ...)
 #define USE_DIRECT_JUMP
 #endif
 
+/*
+ * Lab2 RAS for ROP
+ */
+
+#define NumRAS 64
+
+struct ReturnAddressStack {
+    target_ulong * ras[NumRAS];
+    int ras_top;
+
+    int hit[NumRAS];
+    int hit_index;
+};
+
+void RASInit();
+void RASPush(target_ulong x);
+target_ulong RASPop();
+
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */
     target_ulong cs_base; /* CS base for this block */
@@ -262,6 +280,14 @@ struct TranslationBlock {
      */
     uintptr_t jmp_list_next[2];
     uintptr_t jmp_list_first;
+
+
+    /*
+     * Lab2 RAS for ROP
+     */
+    int call_flag;
+    target_ulong next_instr;
+    int ret_flag;
 };
 
 void tb_free(TranslationBlock *tb);
@@ -414,6 +440,8 @@ bool memory_region_is_unassigned(MemoryRegion *mr);
 
 /* vl.c */
 extern int singlestep;
+
+extern int RASOn;
 
 /* cpu-exec.c, accessed with atomic_mb_read/atomic_mb_set */
 extern CPUState *tcg_current_cpu;

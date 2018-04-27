@@ -275,3 +275,8 @@ xen-common.c
 xen-hvm-stub.c
 xen-hvm.c
 xen-mapcache.c
+.idea/
+CMakeLists.txt
+cmake-build-debug/
+qemu-version.h
+qemu-version.h.tmp

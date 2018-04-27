@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+#include <exec/cpu-defs.h>
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "trace.h"
@@ -26,6 +27,7 @@
 #include "sysemu/qtest.h"
 #include "qemu/timer.h"
 #include "exec/address-spaces.h"
+#include "exec/cpu-defs.h"
 #include "qemu/rcu.h"
 #include "exec/tb-hash.h"
 #include "exec/log.h"
@@ -41,6 +43,14 @@ typedef struct SyncClocks {
     int64_t last_cpu_icount;
     int64_t realtime_clock;
 } SyncClocks;
+
+
+/*
+ * Lab2 RAS for ROP
+ */
+
+RAS ras;
+
 
 #if !defined(CONFIG_USER_ONLY)
 /* Allow the guest to have a max 3ms advance.
@@ -318,6 +328,22 @@ found:
     cpu->tb_jmp_cache[tb_jmp_cache_hash_func(pc)] = tb;
     return tb;
 }
+
+/*
+ * Lab2 RAS for ROP
+ */
+
+void RASInit() {
+    ras.ras_top = 0;
+    ras.hit_index = 0;
+}
+
+void RASPush(target_ulong x) {
+    // wrap around if full to imitate real RAS behavior
+    ras.ras_top = (ras.ras_top + 1) % NumRAS;
+    ras.ras[ras.ras_top] = x;
+}
+
 
 static inline TranslationBlock *tb_find_fast(CPUState *cpu,
                                              TranslationBlock **last_tb,
