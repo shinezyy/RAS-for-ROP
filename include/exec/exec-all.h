@@ -211,6 +211,16 @@ static inline void tlb_flush_by_mmuidx(CPUState *cpu, ...)
 #define USE_DIRECT_JUMP
 #endif
 
+/* QEMU-HOMEWORK -ss command options, SHADOW STACK module */
+struct shadow_stack{
+	target_ulong *stack;
+	int top;
+	int MaxSize;
+};
+target_ulong ShadowStackPop(void);
+void ShadowStackPush(target_ulong x);
+void ShadowStackInit(void);
+
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */
     target_ulong cs_base; /* CS base for this block */
@@ -262,6 +272,11 @@ struct TranslationBlock {
      */
     uintptr_t jmp_list_next[2];
     uintptr_t jmp_list_first;
+
+    /* QEMU-HOMEWORK -ss command options, SHADOW STACK module */
+    int CALLFlag;
+    target_ulong next_insn;
+    int RETFlag;
 };
 
 void tb_free(TranslationBlock *tb);
@@ -414,6 +429,8 @@ bool memory_region_is_unassigned(MemoryRegion *mr);
 
 /* vl.c */
 extern int singlestep;
+
+extern int cas_shadowstack; //QEMU-HOMEWORK -ss command options, SHADOW STACK module
 
 /* cpu-exec.c, accessed with atomic_mb_read/atomic_mb_set */
 extern CPUState *tcg_current_cpu;

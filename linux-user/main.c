@@ -49,6 +49,10 @@ unsigned long mmap_min_addr;
 unsigned long guest_base;
 int have_guest_base;
 
+/* QEMU-HOMEWORK -ss command options
+ * SHADOW_STACK module */
+int cas_shadowstack; 
+
 #define EXCP_DUMP(env, fmt, ...)                                        \
 do {                                                                    \
     CPUState *cs = ENV_GET_CPU(env);                                    \
@@ -291,6 +295,12 @@ void cpu_loop(CPUX86State *env)
     abi_ulong pc;
     abi_ulong ret;
     target_siginfo_t info;
+
+    /*  QEMU-HOMEWORK -ss command option SHADOW STACK module function
+     *  initial SHADOW STACK */
+    if(cas_shadowstack){
+        ShadowStackInit();
+    }
 
     for(;;) {
         cpu_exec_start(cs);
@@ -4011,6 +4021,13 @@ static void handle_arg_trace(const char *arg)
     trace_file = trace_opt_parse(arg);
 }
 
+/* QEMU-HOMEWORK -ss command options
+ * SHADOW STACK module */
+static void handle_arg_ShadowStack(const char *arg)
+{
+	cas_shadowstack = 1;
+}
+
 struct qemu_argument {
     const char *argv;
     const char *env;
@@ -4062,6 +4079,8 @@ static const struct qemu_argument arg_table[] = {
      "",           "[[enable=]<pattern>][,events=<file>][,file=<file>]"},
     {"version",    "QEMU_VERSION",     false, handle_arg_version,
      "",           "display version information and exit"},
+    {"ss",    "",     false, handle_arg_ShadowStack,
+     "",    "set shadow stack mechanism" },
     {NULL, NULL, false, NULL, NULL, NULL}
 };
 
@@ -4811,6 +4830,7 @@ int main(int argc, char **argv, char **envp)
         gdb_handlesig(cpu, 0);
     }
     trace_init_vcpu_events();
+    /*This is homework*/
     cpu_loop(env);
     /* never exits */
     return 0;

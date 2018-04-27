@@ -26,6 +26,9 @@
 #define CODE_GEN_HTABLE_BITS     15
 #define CODE_GEN_HTABLE_SIZE     (1 << CODE_GEN_HTABLE_BITS)
 
+/* QEMU-HOMEWORK -ss command options, SHADOW STACK module */
+typedef struct shadow_stack ShadowStack;
+
 typedef struct TranslationBlock TranslationBlock;
 typedef struct TBContext TBContext;
 
