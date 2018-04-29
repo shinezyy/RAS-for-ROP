@@ -218,16 +218,16 @@ static inline void tlb_flush_by_mmuidx(CPUState *cpu, ...)
 #define NumRAS 64
 
 struct ReturnAddressStack {
-    target_ulong * ras[NumRAS];
+    target_ulong ras[NumRAS];
     int ras_top;
 
     int hit[NumRAS];
     int hit_index;
 };
 
-void RASInit();
+void RASInit(void);
 void RASPush(target_ulong x);
-target_ulong RASPop();
+target_ulong RASPop(void);
 
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */
@@ -441,7 +441,7 @@ bool memory_region_is_unassigned(MemoryRegion *mr);
 /* vl.c */
 extern int singlestep;
 
-extern int RASOn;
+extern int enableRAS;
 
 /* cpu-exec.c, accessed with atomic_mb_read/atomic_mb_set */
 extern CPUState *tcg_current_cpu;

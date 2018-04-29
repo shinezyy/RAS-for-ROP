@@ -16,7 +16,6 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#include <exec/cpu-defs.h>
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "trace.h"
@@ -27,7 +26,6 @@
 #include "sysemu/qtest.h"
 #include "qemu/timer.h"
 #include "exec/address-spaces.h"
-#include "exec/cpu-defs.h"
 #include "qemu/rcu.h"
 #include "exec/tb-hash.h"
 #include "exec/log.h"
@@ -333,15 +331,27 @@ found:
  * Lab2 RAS for ROP
  */
 
-void RASInit() {
+void RASInit(void)
+{
     ras.ras_top = 0;
     ras.hit_index = 0;
 }
 
-void RASPush(target_ulong x) {
+void RASPush(target_ulong x)
+{
     // wrap around if full to imitate real RAS behavior
     ras.ras_top = (ras.ras_top + 1) % NumRAS;
     ras.ras[ras.ras_top] = x;
+}
+
+target_ulong RASPop(void)
+{
+    target_ulong x = ras.ras[ras.ras_top];
+    if (ras.ras_top == 0) {
+        ras.ras_top = NumRAS;
+    }
+    ras.ras_top -= 1;
+    return x;
 }
 
 

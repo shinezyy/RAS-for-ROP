@@ -104,6 +104,13 @@ typedef struct DisasContext {
     target_ulong pc; /* pc = eip + cs_base */
     int is_jmp; /* 1 = means jump (stop translation), 2 means CPU
                    static state change (stop translation) */
+
+    /*
+     * Lab2 RAS
+     */
+    int have_stack_call;
+    int have_stack_ret;
+
     /* current block context */
     target_ulong cs_base; /* base of CS segment */
     int pe;     /* protected mode */
@@ -4864,6 +4871,11 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             }
             next_eip = s->pc - s->cs_base;
             tcg_gen_movi_tl(cpu_T1, next_eip);
+
+            if (enableRAS) {
+                s->have_stack_call = true;
+            }
+
             gen_push_v(s, cpu_T1);
             gen_op_jmp_v(cpu_T0);
             gen_bnd_jmp(s);
@@ -6266,6 +6278,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         /************************/
         /* control */
     case 0xc2: /* ret im */
+        if (enableRAS) {
+            s->have_stack_ret = true;
+        }
         val = cpu_ldsw_code(env, s->pc);
         s->pc += 2;
         ot = gen_pop_T0(s);
@@ -6276,6 +6291,10 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_eob(s);
         break;
     case 0xc3: /* ret */
+        if (enableRAS) {
+            s->have_stack_ret = true;
+        }
+
         ot = gen_pop_T0(s);
         gen_pop_update(s, ot);
         /* Note that gen_pop_T0 uses a zero-extending load.  */
@@ -6346,6 +6365,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tval &= 0xffffffff;
             }
             tcg_gen_movi_tl(cpu_T0, next_eip);
+            if (enableRAS) {
+                s->have_stack_call = true;
+            }
             gen_push_v(s, cpu_T0);
             gen_bnd_jmp(s);
             gen_jmp(s, tval);
@@ -8189,6 +8211,20 @@ void tcg_x86_init(void)
     helper_lock_init();
 }
 
+/*
+ * Lab2 RAS
+ */
+static inline void grin_tcg_handle_stack(target_ulong pc_ptr, DisasContext *s,
+        TranslationBlock *tb)
+{
+    if (s->have_stack_call) {
+        tb->call_flag = true;
+        tb->next_instr = pc_ptr;
+    } else {
+        tb->ret_flag = true;
+    }
+}
+
 /* generate intermediate code for basic block 'tb'.  */
 void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
 {
@@ -8201,6 +8237,13 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     target_ulong cs_base;
     int num_insns;
     int max_insns;
+
+    /*
+     * Lab2 RAS
+     */
+    tb->call_flag = 0;
+    tb->next_instr = 0;
+    tb->ret_flag = 0;
 
     /* generate intermediate code */
     pc_start = tb->pc;
@@ -8303,6 +8346,13 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
         }
 
         pc_ptr = disas_insn(env, dc, pc_ptr);
+
+        /*
+         * Lab2: RAS
+         */
+        if (enableRAS) {
+            grin_tcg_handle_stack(pc_ptr, dc, tb);
+        }
         /* stop translation if indicated */
         if (dc->is_jmp)
             break;

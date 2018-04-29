@@ -49,6 +49,11 @@ unsigned long mmap_min_addr;
 unsigned long guest_base;
 int have_guest_base;
 
+/*
+ * ras Flag;
+ */
+int enableRAS;
+
 #define EXCP_DUMP(env, fmt, ...)                                        \
 do {                                                                    \
     CPUState *cs = ENV_GET_CPU(env);                                    \
@@ -291,6 +296,13 @@ void cpu_loop(CPUX86State *env)
     abi_ulong pc;
     abi_ulong ret;
     target_siginfo_t info;
+
+    /*
+     * Lab2 RAS
+     */
+    if (enableRAS) {
+        RASInit();
+    }
 
     for(;;) {
         cpu_exec_start(cs);
@@ -4011,6 +4023,11 @@ static void handle_arg_trace(const char *arg)
     trace_file = trace_opt_parse(arg);
 }
 
+static void handle_arg_RAS(const char *arg)
+{
+    enableRAS = true;
+}
+
 struct qemu_argument {
     const char *argv;
     const char *env;
@@ -4062,6 +4079,8 @@ static const struct qemu_argument arg_table[] = {
      "",           "[[enable=]<pattern>][,events=<file>][,file=<file>]"},
     {"version",    "QEMU_VERSION",     false, handle_arg_version,
      "",           "display version information and exit"},
+    {"ras",        "",                 false, handle_arg_RAS,
+    "",            "enable RAS"},
     {NULL, NULL, false, NULL, NULL, NULL}
 };
 
