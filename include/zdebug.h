@@ -12,6 +12,8 @@ extern bool DebugRASHit;
 
 extern bool DebugPushPop;
 
+extern bool DebugROP;
+
 #define dprintf(debug_flags, fmt, ...) \
     do { \
         if (DEBUG_ALL && (debug_flags) ) { \

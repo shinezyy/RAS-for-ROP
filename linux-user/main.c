@@ -56,11 +56,13 @@ int have_guest_base;
  */
 bool DEBUG_ALL = true;
 
-bool DebugPushOnlyOnce = true;
+bool DebugPushOnlyOnce = false;
 
-bool DebugPushPop = true;
+bool DebugPushPop = false;
 
 bool DebugRASHit = true;
+
+bool DebugROP = true;
 
 int enableRAS;
 

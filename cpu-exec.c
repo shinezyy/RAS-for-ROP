@@ -218,7 +218,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
         } else {
             RASMiss();
         }
-        dprintfr(DebugPushOnlyOnce, "Expected: 0x%lx; Actual: 0x%lx\n",
+        dprintfr(DebugPushOnlyOnce, "Expected: 0x%016lx; Actual: 0x%016lx\n",
                 expected_addr, next_instr);
     }
     return ret;
@@ -366,6 +366,9 @@ void RASInit(void)
 
     ras.num_ras_hit_overall = 0;
     ras.num_ras_hit_overall = 0;
+
+    ras.num_unpopped_push = 0;
+    ras.num_overall_push = 0;
 }
 
 void RASPush(target_ulong x)
@@ -374,15 +377,30 @@ void RASPush(target_ulong x)
     dprintfr(DebugPushPop, "Pushing 0x%016lx\n", x);
     ras.ras_top = (ras.ras_top + 1) % NumRAS;
     ras.ras[ras.ras_top] = x;
+
+    if (unlikely(ras.num_unpopped_push < 0)) {
+        ras.num_unpopped_push = 0;
+    }
+
+    if (ras.num_unpopped_push < NumRAS) {
+        ras.num_unpopped_push += 1;
+    }
+
+    ras.num_overall_push += 1;
 }
 
 target_ulong RASPop(void)
 {
+    ras.num_overall_push -= 1;
+
     target_ulong x = ras.ras[ras.ras_top];
     if (ras.ras_top == 0) {
         ras.ras_top = NumRAS;
     }
     ras.ras_top -= 1;
+    if (ras.num_unpopped_push >= 0) {
+        ras.num_unpopped_push -= 1;
+    }
     dprintfr(DebugPushPop, "Poping 0x%016lx\n", x);
     return x;
 }
@@ -393,14 +411,16 @@ static void checkHitRate(bool always)
     double overall_hit_rate = ((double) ras.num_ras_hit_overall) /
         ras.num_ras_pred_overall;
 
-    if (always || recent_hit_rate < 0.98 || overall_hit_rate < 0.98 ||
+    if (always || (recent_hit_rate < 0.98 && overall_hit_rate < 1.0) ||
             recent_hit_rate > 1.0 || overall_hit_rate > 1.0) {
-        dprintfr(DebugRASHit, "recent hit rate: %f; overall hit rate: %f\n",
+        dprintfr(DebugRASHit, "recent hit rate: %.03f; overall hit rate: %.03f\n",
                 recent_hit_rate, overall_hit_rate);
 
         dprintfr(DebugRASHit, "recent hits: %d; overall hits: %d; "
-                "overall pred: %d\n", ras.num_ras_hit_recently,
-                ras.num_ras_hit_overall, ras.num_ras_pred_overall);
+                "overall pred: %d; unpopped addr: %d\n",
+                ras.num_ras_hit_recently,
+                ras.num_ras_hit_overall, ras.num_ras_pred_overall,
+                ras.num_unpopped_push);
     }
 }
 
@@ -429,6 +449,14 @@ void RASMiss(void)
     ras.num_ras_pred_overall += 1;
     ras.num_ras_hit_overall += 0;
 
+    if (ras.num_unpopped_push >= 0) {
+        dprintfr(DebugROP, "[Warn] Miss prediction when RAS is not overflow!"
+                " This program might be attacked!\n");
+    }
+    if (ras.num_overall_push < 0) {
+        dprintfr(DebugROP, "[Warn] Miss prediction when #Call < # Return!"
+                " This program might be attacked!\n");
+    }
     checkHitRate(true);
 }
 
