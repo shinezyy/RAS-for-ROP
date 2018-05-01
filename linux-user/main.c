@@ -37,6 +37,8 @@
 #include "trace/control.h"
 #include "glib-compat.h"
 
+#include "zdebug.h"
+
 char *exec_path;
 
 int singlestep;
@@ -52,6 +54,10 @@ int have_guest_base;
 /*
  * ras Flag;
  */
+bool DEBUG_ALL = true;
+
+bool DebugPushOnlyOnce = true;
+
 int enableRAS;
 
 #define EXCP_DUMP(env, fmt, ...)                                        \
