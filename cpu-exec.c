@@ -34,6 +34,8 @@
 #endif
 #include "sysemu/replay.h"
 
+#include "zdebug.h"
+
 /* -icount align implementation. */
 
 typedef struct SyncClocks {
@@ -206,10 +208,14 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     }
     if (enableRAS && itb->ret_flag) {
         target_ulong expected_addr = RASPop();
-        target_ulong actual_addr = ((X86CPU *) cpu->env_ptr)->env.eip;
         target_ulong next_instr = itb->next_instr;
-        printf("Expected: 0x%lx; Actual: 0x%lx\n", expected_addr, actual_addr);
-        printf("Next instr: 0x%lx\n", next_instr);
+        if (expected_addr == next_instr) {
+            RASHit();
+        } else {
+            RASMiss();
+        }
+        dprintfr(DebugPushOnlyOnce, "Expected: 0x%lx; Actual: 0x%lx\n",
+                expected_addr, next_instr);
     }
     return ret;
 }
@@ -346,11 +352,22 @@ void RASInit(void)
     printf("RAS enable!\n");
     ras.ras_top = 0;
     ras.hit_index = 0;
+
+    for (int i = 0; i < NumRAS; i++) {
+        ras.ras[i] = 0;
+        ras.hit[i] = 0;
+    }
+
+    ras.num_ras_hit_recently = 0;
+
+    ras.num_ras_hit_overall = 0;
+    ras.num_ras_hit_overall = 0;
 }
 
 void RASPush(target_ulong x)
 {
     // wrap around if full to imitate real RAS behavior
+    dprintfr(DebugPushPop, "Pushing %lx\n", x);
     ras.ras_top = (ras.ras_top + 1) % NumRAS;
     ras.ras[ras.ras_top] = x;
 }
@@ -362,7 +379,53 @@ target_ulong RASPop(void)
         ras.ras_top = NumRAS;
     }
     ras.ras_top -= 1;
+    dprintfr(DebugPushPop, "Poping %lx\n", x);
     return x;
+}
+
+static void checkHitRate(void)
+{
+    double recent_hit_rate = ((double) ras.num_ras_hit_recently) / NumRAS;
+    double overall_hit_rate = ((double) ras.num_ras_hit_overall) /
+        ras.num_ras_pred_overall;
+
+    if (recent_hit_rate < 0.98 || overall_hit_rate < 0.98 ||
+            recent_hit_rate > 1.0 || overall_hit_rate > 1.0) {
+        dprintfr(DebugRASHit, "recent hit rate: %f; overall hit rate: %f\n",
+                recent_hit_rate, overall_hit_rate);
+
+        dprintfr(DebugRASHit, "recent hits: %d; overall hits: %d; "
+                "overall pred: %d\n", ras.num_ras_hit_recently,
+                ras.num_ras_hit_overall, ras.num_ras_pred_overall);
+    }
+}
+
+void RASHit(void)
+{
+    ras.num_ras_hit_recently -= ras.hit[ras.hit_index];
+
+    ras.hit[ras.hit_index] = 1;
+    ras.num_ras_hit_recently += 1;
+    ras.hit_index = (ras.hit_index + 1) % NumRAS;
+
+    ras.num_ras_pred_overall += 1;
+    ras.num_ras_hit_overall += 1;
+
+    checkHitRate();
+}
+
+void RASMiss(void)
+{
+    ras.num_ras_hit_recently -= ras.hit[ras.hit_index];
+
+    ras.hit[ras.hit_index] = 0;
+    ras.num_ras_hit_recently += 0;
+    ras.hit_index = (ras.hit_index + 1) % NumRAS;
+
+    ras.num_ras_pred_overall += 1;
+    ras.num_ras_hit_overall += 0;
+
+    checkHitRate();
 }
 
 
@@ -411,6 +474,10 @@ static inline TranslationBlock *tb_find_fast(CPUState *cpu,
      */
     if (enableRAS) {
         if (tb->call_flag == true) {
+            dprintfr(DebugPushOnlyOnce, "EIP = 0x%lx\n",
+                    ((X86CPU *) cpu->env_ptr)->env.eip);
+            dvar_dec(DebugPushOnlyOnce, ((X86CPU *) cpu->env_ptr)->env.eip);
+            dvar_hex(DebugPushOnlyOnce, ((X86CPU *) cpu->env_ptr)->env.eip);
             RASPush(tb->next_instr);
         }
     }

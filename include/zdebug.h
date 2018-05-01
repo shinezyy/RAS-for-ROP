@@ -8,6 +8,10 @@ extern bool DEBUG_ALL;
 
 extern bool DebugPushOnlyOnce;
 
+extern bool DebugRASHit;
+
+extern bool DebugPushPop;
+
 #define dprintf(debug_flags, fmt, ...) \
     do { \
         if (DEBUG_ALL && (debug_flags) ) { \

@@ -215,7 +215,7 @@ static inline void tlb_flush_by_mmuidx(CPUState *cpu, ...)
  * Lab2 RAS for ROP
  */
 
-#define NumRAS 64
+#define NumRAS 2
 
 struct ReturnAddressStack {
     target_ulong ras[NumRAS];
@@ -223,11 +223,22 @@ struct ReturnAddressStack {
 
     int hit[NumRAS];
     int hit_index;
+
+    int num_ras_hit_recently;
+
+    int num_ras_hit_overall;
+    int num_ras_pred_overall;
 };
 
 void RASInit(void);
+
 void RASPush(target_ulong x);
+
 target_ulong RASPop(void);
+
+void RASHit(void);
+
+void RASMiss(void);
 
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */

@@ -8220,7 +8220,8 @@ static inline void grin_tcg_handle_stack(target_ulong pc_ptr, DisasContext *s,
     if (s->have_stack_call) {
         tb->call_flag = true;
         tb->next_instr = pc_ptr;
-    } else if (s->have_stack_ret) {
+    }
+    if (s->have_stack_ret) {
         tb->ret_flag = true;
     }
 }
