@@ -296,9 +296,9 @@ struct TranslationBlock {
     /*
      * Lab2 RAS for ROP
      */
-    int call_flag;
+    bool call_flag;
     target_ulong next_instr;
-    int ret_flag;
+    bool ret_flag;
 };
 
 void tb_free(TranslationBlock *tb);

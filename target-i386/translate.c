@@ -108,8 +108,8 @@ typedef struct DisasContext {
     /*
      * Lab2 RAS
      */
-    int have_stack_call;
-    int have_stack_ret;
+    bool have_stack_call;
+    bool have_stack_ret;
 
     /* current block context */
     target_ulong cs_base; /* base of CS segment */
@@ -8218,11 +8218,14 @@ static inline void grin_tcg_handle_stack(target_ulong pc_ptr, DisasContext *s,
         TranslationBlock *tb)
 {
     if (s->have_stack_call) {
-        tb->call_flag = true;
         tb->next_instr = pc_ptr;
+        tb->call_flag = true;
+        s->have_stack_call = false;
     }
     if (s->have_stack_ret) {
+        tb->next_instr = pc_ptr;
         tb->ret_flag = true;
+        s->have_stack_ret = false;
     }
 }
 
@@ -8242,9 +8245,12 @@ void gen_intermediate_code(CPUX86State *env, TranslationBlock *tb)
     /*
      * Lab2 RAS
      */
-    tb->call_flag = 0;
-    tb->next_instr = 0;
-    tb->ret_flag = 0;
+    tb->call_flag = false;
+    tb->next_instr = false;
+    tb->ret_flag = false;
+
+    dc->have_stack_ret = false;
+    dc->have_stack_call = false;
 
     /* generate intermediate code */
     pc_start = tb->pc;

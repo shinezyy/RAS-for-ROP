@@ -367,7 +367,7 @@ void RASInit(void)
 void RASPush(target_ulong x)
 {
     // wrap around if full to imitate real RAS behavior
-    dprintfr(DebugPushPop, "Pushing %lx\n", x);
+    dprintfr(DebugPushPop, "Pushing 0x%016lx\n", x);
     ras.ras_top = (ras.ras_top + 1) % NumRAS;
     ras.ras[ras.ras_top] = x;
 }
@@ -379,17 +379,17 @@ target_ulong RASPop(void)
         ras.ras_top = NumRAS;
     }
     ras.ras_top -= 1;
-    dprintfr(DebugPushPop, "Poping %lx\n", x);
+    dprintfr(DebugPushPop, "Poping 0x%016lx\n", x);
     return x;
 }
 
-static void checkHitRate(void)
+static void checkHitRate(bool always)
 {
     double recent_hit_rate = ((double) ras.num_ras_hit_recently) / NumRAS;
     double overall_hit_rate = ((double) ras.num_ras_hit_overall) /
         ras.num_ras_pred_overall;
 
-    if (recent_hit_rate < 0.98 || overall_hit_rate < 0.98 ||
+    if (always || recent_hit_rate < 0.98 || overall_hit_rate < 0.98 ||
             recent_hit_rate > 1.0 || overall_hit_rate > 1.0) {
         dprintfr(DebugRASHit, "recent hit rate: %f; overall hit rate: %f\n",
                 recent_hit_rate, overall_hit_rate);
@@ -411,7 +411,7 @@ void RASHit(void)
     ras.num_ras_pred_overall += 1;
     ras.num_ras_hit_overall += 1;
 
-    checkHitRate();
+    checkHitRate(false);
 }
 
 void RASMiss(void)
@@ -425,7 +425,7 @@ void RASMiss(void)
     ras.num_ras_pred_overall += 1;
     ras.num_ras_hit_overall += 0;
 
-    checkHitRate();
+    checkHitRate(true);
 }
 
 

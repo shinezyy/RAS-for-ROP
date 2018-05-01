@@ -56,7 +56,7 @@ int have_guest_base;
  */
 bool DEBUG_ALL = true;
 
-bool DebugPushOnlyOnce = false;
+bool DebugPushOnlyOnce = true;
 
 bool DebugPushPop = true;
 
