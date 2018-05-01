@@ -150,6 +150,9 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     int tb_exit;
     uint8_t *tb_ptr = itb->tc_ptr;
 
+    /*
+     * Lab2 RAS
+     */
     qemu_log_mask_and_addr(CPU_LOG_EXEC, itb->pc,
                            "Trace %p [" TARGET_FMT_lx "] %s\n",
                            itb->tc_ptr, itb->pc, lookup_symbol(itb->pc));
@@ -200,6 +203,13 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
          * interrupt. We've now stopped, so clear the flag.
          */
         cpu->tcg_exit_req = 0;
+    }
+    if (enableRAS && itb->ret_flag) {
+        target_ulong expected_addr = RASPop();
+        target_ulong actual_addr = ((X86CPU *) cpu->env_ptr)->env.eip;
+        target_ulong next_instr = itb->next_instr;
+        printf("Expected: 0x%lx; Actual: 0x%lx\n", expected_addr, actual_addr);
+        printf("Next instr: 0x%lx\n", next_instr);
     }
     return ret;
 }
@@ -333,6 +343,7 @@ found:
 
 void RASInit(void)
 {
+    printf("RAS enable!\n");
     ras.ras_top = 0;
     ras.hit_index = 0;
 }
@@ -392,9 +403,17 @@ static inline TranslationBlock *tb_find_fast(CPUState *cpu,
 #endif
     /* See if we can patch the calling TB. */
     if (*last_tb && !qemu_loglevel_mask(CPU_LOG_TB_NOCHAIN)) {
-        tb_add_jump(*last_tb, tb_exit, tb);
+//        tb_add_jump(*last_tb, tb_exit, tb);
     }
     tb_unlock();
+    /*
+     * Lab2 RAS
+     */
+    if (enableRAS) {
+        if (tb->call_flag == true) {
+            RASPush(tb->next_instr);
+        }
+    }
     return tb;
 }
 
