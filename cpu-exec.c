@@ -208,7 +208,11 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
     }
     if (enableRAS && itb->ret_flag) {
         target_ulong expected_addr = RASPop();
-        target_ulong next_instr = itb->next_instr;
+
+        X86CPU *cpu2 = (X86CPU *)cpu;
+        CPUX86State *env = &cpu2->env;
+        target_ulong next_instr = env->eip;
+
         if (expected_addr == next_instr) {
             RASHit();
         } else {
@@ -474,10 +478,6 @@ static inline TranslationBlock *tb_find_fast(CPUState *cpu,
      */
     if (enableRAS) {
         if (tb->call_flag == true) {
-            dprintfr(DebugPushOnlyOnce, "EIP = 0x%lx\n",
-                    ((X86CPU *) cpu->env_ptr)->env.eip);
-            dvar_dec(DebugPushOnlyOnce, ((X86CPU *) cpu->env_ptr)->env.eip);
-            dvar_hex(DebugPushOnlyOnce, ((X86CPU *) cpu->env_ptr)->env.eip);
             RASPush(tb->next_instr);
         }
     }
