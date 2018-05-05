@@ -37,8 +37,6 @@
 #include "trace/control.h"
 #include "glib-compat.h"
 
-#include "zdebug.h"
-
 char *exec_path;
 
 int singlestep;
@@ -60,7 +58,7 @@ bool DebugPushOnlyOnce = false;
 
 bool DebugPushPop = false;
 
-bool DebugRASHit = true;
+bool DebugRASHit = false;
 
 bool DebugROP = true;
 

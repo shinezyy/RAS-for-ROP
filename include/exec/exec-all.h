@@ -242,7 +242,7 @@ target_ulong RASPop(void);
 
 void RASHit(void);
 
-void RASMiss(void);
+void RASMiss(target_ulong injected_addr);
 
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */
@@ -461,5 +461,45 @@ extern int enableRAS;
 /* cpu-exec.c, accessed with atomic_mb_read/atomic_mb_set */
 extern CPUState *tcg_current_cpu;
 extern bool exit_request;
+
+extern bool DEBUG_ALL;
+
+extern bool DebugPushOnlyOnce;
+
+extern bool DebugRASHit;
+
+extern bool DebugPushPop;
+
+extern bool DebugROP;
+
+#define dprintf(debug_flags, fmt, ...) \
+    do { \
+        if (DEBUG_ALL && (debug_flags) ) { \
+            fprintf(stderr, fmt "[%s:%d %s]\n", ##__VA_ARGS__, __FILE__, \
+                    __LINE__, __FUNCTION__); \
+        }\
+    } while (false)
+
+#define dprintfr(debug_flags, fmt, ...) \
+    do { \
+        if (DEBUG_ALL && (debug_flags) ) { \
+            fprintf(stderr, fmt, ##__VA_ARGS__); \
+        }\
+    } while (false)
+
+#define dvar_dec(debug_flags, var ) \
+    do { \
+        if (DEBUG_ALL && (debug_flags) ) { \
+            fprintf(stderr, #var " = %llu\n", (unsigned long long) var); \
+        }\
+    } while (false)
+
+#define dvar_hex(debug_flags, var ) \
+    do { \
+        if (DEBUG_ALL && (debug_flags) ) { \
+            fprintf(stderr, #var " = 0x%llx\n", (unsigned long long) var); \
+        }\
+    } while (false)
+
 
 #endif

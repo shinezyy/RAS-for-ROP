@@ -34,8 +34,6 @@
 #endif
 #include "sysemu/replay.h"
 
-#include "zdebug.h"
-
 /* -icount align implementation. */
 
 typedef struct SyncClocks {
@@ -216,7 +214,7 @@ static inline tcg_target_ulong cpu_tb_exec(CPUState *cpu, TranslationBlock *itb)
         if (expected_addr == next_instr) {
             RASHit();
         } else {
-            RASMiss();
+            RASMiss(next_instr);
         }
         dprintfr(DebugPushOnlyOnce, "Expected: 0x%016lx; Actual: 0x%016lx\n",
                 expected_addr, next_instr);
@@ -379,7 +377,7 @@ void RASPush(target_ulong x)
     ras.ras[ras.ras_top] = x;
 
     if (unlikely(ras.num_unpopped_push < 0)) {
-        ras.num_unpopped_push = 0;
+        ras.num_unpopped_push = 1;
     }
 
     if (ras.num_unpopped_push < NumRAS) {
@@ -405,13 +403,14 @@ target_ulong RASPop(void)
     return x;
 }
 
-static void checkHitRate(bool always)
+static void checkHitRate(bool always, target_ulong injected_addr)
 {
     double recent_hit_rate = ((double) ras.num_ras_hit_recently) / NumRAS;
     double overall_hit_rate = ((double) ras.num_ras_hit_overall) /
         ras.num_ras_pred_overall;
 
-    if (always || (recent_hit_rate < 0.98 && overall_hit_rate < 1.0) ||
+    // For debug
+    if (always || (recent_hit_rate < 0.50 && overall_hit_rate < 1.0) ||
             recent_hit_rate > 1.0 || overall_hit_rate > 1.0) {
         dprintfr(DebugRASHit, "recent hit rate: %.03f; overall hit rate: %.03f\n",
                 recent_hit_rate, overall_hit_rate);
@@ -422,6 +421,15 @@ static void checkHitRate(bool always)
                 ras.num_ras_hit_overall, ras.num_ras_pred_overall,
                 ras.num_unpopped_push);
     }
+
+    // ROP alarm
+    if ((recent_hit_rate < 0.4 && overall_hit_rate < 0.9999) ||
+            overall_hit_rate < 0.98) {
+        dprintf(DebugROP, "[WARN] RAS hit rate is too low,"
+                " This program might be attacked!\n"
+                "Address might be modified to: 0x%lx. ", injected_addr);
+    }
+
 }
 
 void RASHit(void)
@@ -435,10 +443,10 @@ void RASHit(void)
     ras.num_ras_pred_overall += 1;
     ras.num_ras_hit_overall += 1;
 
-    checkHitRate(false);
+    checkHitRate(false, 0);
 }
 
-void RASMiss(void)
+void RASMiss(target_ulong injected_addr)
 {
     ras.num_ras_hit_recently -= ras.hit[ras.hit_index];
 
@@ -449,15 +457,18 @@ void RASMiss(void)
     ras.num_ras_pred_overall += 1;
     ras.num_ras_hit_overall += 0;
 
+    // ROP alarm
     if (ras.num_unpopped_push >= 0) {
-        dprintfr(DebugROP, "[Warn] Miss prediction when RAS is not overflow!"
-                " This program might be attacked!\n");
+        dprintf(DebugROP, "[WARN] Miss prediction when RAS is not underflow!"
+                " This program might be attacked!\n"
+                "Address might be modified to: 0x%lx. ", injected_addr);
     }
     if (ras.num_overall_push < 0) {
-        dprintfr(DebugROP, "[Warn] Miss prediction when #Call < # Return!"
-                " This program might be attacked!\n");
+        dprintf(DebugROP, "[WARN] Miss prediction when #Call < #Return!"
+                " This program might be attacked!\n"
+                "Address might be modified to: 0x%lx. ", injected_addr);
     }
-    checkHitRate(true);
+    checkHitRate(true, injected_addr);
 }
 
 
